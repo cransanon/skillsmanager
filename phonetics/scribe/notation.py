@@ -138,7 +138,8 @@ def stretch_word(word: str, level: int) -> str:
         elif core[:1].isupper():
             held = held[:1].upper() + held[1:]
         return word.replace(core, held, 1)
-    groups = [m for m in re.finditer(r"[aeiouyAEIOUY]+", word)]
+    # y is a vowel only after a consonant ("my", "baby"), never leading ("you").
+    groups = [m for m in re.finditer(r"[aeiouAEIOU]+|(?<=[b-df-hj-np-tv-zB-DF-HJ-NP-TV-Z])[yY]", word)]
     if not groups:
         return word
     g = groups[-1]
@@ -146,5 +147,7 @@ def stretch_word(word: str, level: int) -> str:
     # A final silent e is not the held vowel ("please" holds the ea).
     if len(groups) > 1 and g.group().lower() == "e" and g.end() == alpha_end:
         g = groups[-2]
-    c = word[g.start()]
-    return word[: g.start() + 1] + c * level + word[g.start() + 1 :]
+    # A vowel ending the word is held at its end (youuu), otherwise at its start (pleeease).
+    at = g.end() - 1 if g.end() == alpha_end else g.start()
+    c = word[at]
+    return word[: at + 1] + c * level + word[at + 1 :]

@@ -37,7 +37,7 @@ It writes `clip.sounds.md` next to the video unless `-o` names another file.
 | `--min-word-prob P` | Words Whisper is less sure of than this are heard as sound instead. Default 0.45. |
 | `--json` | Also write every measurement to `<out>.json`. |
 
-On a CPU a 16-second clip takes about a minute and a half. Use `--start` and `--end` on long videos.
+On a CPU a 2-minute clip takes about 5 minutes. Use `--start` and `--end` on long videos.
 
 ## What comes out
 
@@ -59,6 +59,8 @@ That's the test clip from `tests/make_clip.py`: synthetic voices and noise, so t
 **Every sound, measured.** A table of every single sound: when, how long, what made it, what the classifier heard and how sure it was, the phonemes, the spelling, how loud, the pitch and which way it moved, and why a mark went on (cut off, rising, swallowed, breath before the voice).
 
 **Heard, not spelled.** Sounds the pool has no spelling for (a sniff, a sneeze, a door), with a count.
+
+**Words not trusted.** Over moaning and screaming, Whisper can loop: it writes the same word dozens of times, stacked on one moment or on silence. A stretch it loops on is spelled as sound instead, and what Whisper thought it heard is listed here with the times, for you to check by ear.
 
 ## How a sound becomes a spelling
 
@@ -87,6 +89,7 @@ Spoken words get the style guide's line rules. A loud word is in caps and a quie
 - **Kissing.** The classifier has no kiss, so *smk*, *mp* and *mch* never come out.
 - **Under the words.** A sound made in the middle of a word is part of the word. Hits inside words are left alone.
 - **Exact timing of words.** Whisper's word edges are loose. The tool tightens them, but a sound right against a word can get trimmed.
+- **Words shouted through sex.** Whisper is built for talking. Over moans it often loops or guesses, and different model sizes guess different words. Those stretches are listed under Words not trusted, not printed as lines.
 - **Anything the pool doesn't spell.** That's listed, not spelled.
 
 The labels and spellings are a first pass from the sound alone. Read them against the picture.

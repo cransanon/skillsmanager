@@ -50,13 +50,13 @@ def main(argv=None):
     db = audio.rms_db(y)
     floor_db, ref_db, thresh = events.levels(db)
 
-    words = []
+    words, doubts = [], []
     model = None
     if not args.no_words:
         log(f"listening for words (whisper {args.model})")
         lang = None if args.language == "auto" else args.language
-        words = speech.transcribe(y, args.model, lang, args.min_word_prob)
-        speech.tighten(words, db, thresh)
+        words, doubts = speech.transcribe(y, args.model, lang, args.min_word_prob)
+        words = speech.tighten(words, db, thresh)
         model = args.model
         log(f"  {len(words)} words")
 
@@ -107,6 +107,7 @@ def main(argv=None):
             unspelled[s.kind] = unspelled.get(s.kind, 0) + 1
 
     items = render.page_items(spoken, grouped)
+    doubts = [(a + offset, b + offset, t) for a, b, t in doubts]
     if offset:
         for it in items:
             it["start"] += offset
@@ -115,7 +116,7 @@ def main(argv=None):
             s.start += offset
             s.end += offset
 
-    md = render.markdown(args.video, dur, model, items, sounds, voices, room, unspelled, args)
+    md = render.markdown(args.video, dur, model, items, sounds, voices, room, unspelled, doubts, args)
     out = args.out or os.path.splitext(args.video)[0] + ".sounds.md"
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(md)

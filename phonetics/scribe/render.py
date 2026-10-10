@@ -18,7 +18,7 @@ def heard(s) -> str:
     return f"{s.label} {s.label_p:.2f}"
 
 
-def markdown(path, dur, model, page_items, sounds, voices, room, unspelled, args) -> str:
+def markdown(path, dur, model, page_items, sounds, voices, room, unspelled, doubts, args) -> str:
     name = os.path.basename(path)
     out = [f"# {name}", ""]
     meta = [ts(dur)]
@@ -68,6 +68,15 @@ def markdown(path, dur, model, page_items, sounds, voices, room, unspelled, args
         out.append("")
         for kind, n in sorted(unspelled.items()):
             out.append(f"- {kind}: {n}")
+        out.append("")
+    if doubts:
+        out += ["## Words not trusted", ""]
+        out.append("Whisper looped on these stretches, writing the same words over and over. "
+                   "They're spelled as sound above. This is what it thought it heard; check it by ear.")
+        out.append("")
+        for a, b, t in doubts:
+            t = t if len(t) <= 160 else t[:160] + "…"
+            out.append(f"- `{ts(a)}`–`{ts(b)}` \"{t}\"")
         out.append("")
     return "\n".join(out)
 

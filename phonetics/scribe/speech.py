@@ -47,9 +47,13 @@ def bare(t: str) -> str:
     return re.sub(r"[^a-z]", "", t.lower())
 
 
-def transcribe(y: np.ndarray, model_size: str, language: str | None, min_prob: float) -> list:
+def transcribe(y: np.ndarray, model_size: str, language: str | None, min_prob: float):
     """Words with timestamps. Low-confidence words and interjections are dropped
-    here so the sound pass hears those stretches instead."""
+    here so the sound pass hears those stretches instead.
+
+    Returns (words, doubts). A stretch whisper loops on (the same words over
+    and over: compression ratio past 2.4, whisper's own line) isn't words; it
+    goes to the sound pass, and what whisper thought it heard goes in doubts."""
     from faster_whisper import WhisperModel
 
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
@@ -62,10 +66,14 @@ def transcribe(y: np.ndarray, model_size: str, language: str | None, min_prob: f
         condition_on_previous_text=False,
         beam_size=5,
         temperature=0.0,  # no sampling: the same clip gives the same words every run
+        hallucination_silence_threshold=1.0,  # skip silence whisper starts looping on
     )
-    words = []
+    words, doubts = [], []
     for s in segs:
         if s.no_speech_prob > 0.6 and s.avg_logprob < -1.0:
+            continue
+        if s.compression_ratio > 2.4:
+            doubts.append((float(s.start), float(s.end), s.text.strip()))
             continue
         ws = list(s.words or [])
         for i, w in enumerate(ws):
@@ -81,7 +89,7 @@ def transcribe(y: np.ndarray, model_size: str, language: str | None, min_prob: f
             if (w.end - w.start) > 2.5:
                 continue
             words.append(Word(text, float(w.start), float(w.end), float(w.probability)))
-    return words
+    return words, doubts
 
 
 def lines(words: list, gap: float = 0.8) -> list:
@@ -97,8 +105,16 @@ def lines(words: list, gap: float = 0.8) -> list:
 def tighten(words, db, thresh_db, gap=0.2):
     """Whisper's word edges run wide and can swallow a sound made just before
     the word. A word holds no silence longer than `gap`: it starts after the
-    last one, at its first loud frame, and ends at its last loud frame."""
+    last one, at its first loud frame, and ends at its last loud frame.
+
+    Whisper also loops: the same words written over and over, stacked on one
+    timestamp or on silence. A word with no sound under it, a word shorter
+    than anyone can say one, or a word sitting on top of the last one is
+    dropped. Returns the words kept."""
+    kept = []
     for w in words:
+        if w.end - w.start < 0.06:
+            continue
         a, b = audio.t2f(w.start), max(audio.t2f(w.end), audio.t2f(w.start) + 1)
         on = db[a:b] > thresh_db
         if not on.any():
@@ -115,6 +131,10 @@ def tighten(words, db, thresh_db, gap=0.2):
                 quiet += 1
         w.start = audio.f2t(a + start)
         w.end = audio.f2t(a + int(idx[-1]) + 1)
+        if kept and w.start < kept[-1].end - 0.02:
+            continue
+        kept.append(w)
+    return kept
 
 
 def measure_words(y, db, words):

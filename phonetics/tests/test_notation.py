@@ -99,6 +99,11 @@ class Words(unittest.TestCase):
         self.assertEqual(nt.stretch_word("no", 2), "nooo")
         self.assertEqual(nt.stretch_word("stop", 1), "stoop")
 
+    def test_leading_y_is_not_a_vowel(self):
+        self.assertEqual(nt.stretch_word("you,", 2), "youuu,")
+        self.assertEqual(nt.stretch_word("YOU", 1), "YOUU")
+        self.assertEqual(nt.stretch_word("baby", 1), "babyy")
+
     def test_final_silent_e_skipped(self):
         self.assertEqual(nt.stretch_word("there", 1), "theere")
 

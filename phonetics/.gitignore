@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.sounds.md
+*.sounds.json
+fixtures/
